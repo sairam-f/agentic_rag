@@ -1,285 +1,137 @@
 
-```md
-# Agentic RAG System (NotebookLM-like – CLI Based)
-
-## Overview
-This project implements an **Agentic Retrieval-Augmented Generation (RAG)** system inspired by **NotebookLM**, built **without using NotebookLM itself**.
-
-Multiple documents can be ingested, indexed locally, and queried via a command-line interface.  
-All answers are **strictly grounded in the uploaded documents** and include **explicit citations**.
-
-If the required information is not present in the documents, the system clearly states that the context is insufficient and requests clarification — preventing hallucinations.
 
 ---
 
-## Key Features
-- 📄 Multi-document ingestion (PDF, DOCX, TXT, MD)
-- ✂️ Safe and deterministic text chunking
-- 🔢 Embedding-based semantic retrieval
-- 🧠 Local persistent Vector Database (NumPy-based)
-- 🤖 Agentic RAG logic (context validation + clarification)
-- 📚 Citation-based answers `[source, page]`
-- 💻 Fully CLI-driven (no UI used)
+# Agentic RAG System (NotebookLM-inspired CLI)
+
+A high-fidelity, command-line **Agentic Retrieval-Augmented Generation (RAG)** system. This project replicates the core functionality of NotebookLM—multi-source grounding and precise citations—built from the ground up without using external RAG platforms or managed services.
+
+## 🚀 Key Features
+
+* **Multi-Format Ingestion:** Seamlessly processes `.pdf`, `.docx`, `.txt`, and `.md`.
+* **Custom Vector Store:** Implements a local, persistent vector database using **NumPy** (no dependency on Pinecone, Chroma, or Weaviate).
+* **Agentic Reasoning:** Features a validation layer that evaluates context before answering. If the context is insufficient, the system requests clarification instead of hallucinating.
+* **Precise Citations:** Every response is explicitly grounded with source file names and page numbers: `[source, page]`.
+* **Zero-UI CLI:** A pure terminal-based interface designed for speed and reliability.
 
 ---
 
-## System Architecture
+## 🏗️ System Architecture
 
-```
+The following diagram illustrates the data flow from raw document ingestion to the final grounded response.
 
-Documents
-↓
-Text Extraction
-↓
-Chunking (overlap)
-↓
-Embeddings (Gemini)
-↓
-Local Vector Store (NumPy)
-↓
-Similarity Search
-↓
-Gemini LLM
-↓
-Grounded Answer + Citations
-
-```
+1. **Ingestion:** Documents are parsed and split into semantic chunks with overlapping windows to preserve context.
+2. **Embedding:** Text chunks are converted into high-dimensional vectors via the **Google Gemini Embedding API**.
+3. **Storage:** Vectors are stored in a local `.npy` matrix, with a corresponding `.jsonl` file for metadata and text.
+4. **Retrieval:** The system uses **Cosine Similarity** to find the most relevant Top-K chunks.
+5. **Agentic Logic:** The Gemini LLM acts as a reasoning agent, verifying if the retrieved chunks actually contain the answer before generating a response.
 
 ---
 
-## Technology Stack
+## 🛠️ Technology Stack
 
 | Component | Technology |
-|--------|-----------|
-| Language | Python 3.14 |
-| LLM | Google Gemini |
-| Embeddings | Gemini Embedding API |
-| Vector Store | Custom NumPy-based persistent index |
-| Interface | Command Line (CLI) |
-| File Parsing | PyPDF, python-docx |
-| Environment | Virtualenv |
+| --- | --- |
+| **Language** | Python 3.14 |
+| **LLM** | Google Gemini (Pro/Flash) |
+| **Embeddings** | Gemini Embedding API |
+| **Vector Store** | Custom NumPy-based persistent index |
+| **File Parsing** | PyPDF, python-docx |
+| **Environment** | Python-dotenv / Virtualenv |
 
 ---
 
-## Vector Store Design (No External Services)
+## 📁 Project Structure
 
-This project **does not use external vector databases** such as Chroma, Pinecone, or Weaviate.
-
-Instead, it implements a **custom persistent vector store using NumPy**.
-
-### Stored Files
-```
-
-data/vdb/
-├── docs_emb.npy        # NxD float32 embedding matrix
-└── docs_meta.jsonl     # metadata + text chunks
-
-```
-
-### Retrieval
-- Cosine similarity
-- Top-K nearest neighbor search
-- Metadata preserved for citations
-
-This design satisfies RAG requirements while remaining fully local and dependency-safe.
-
----
-
-## Folder Structure
-
-```
-
+```text
 agentic_rag/
-├── app.py              # CLI command router
-├── ingest.py           # Document ingestion + embeddings
-├── rag_agent.py        # Agentic RAG query pipeline
-├── vectordb.py         # NumPy vector store
-├── loaders.py          # PDF/DOCX/TXT loaders
-├── chunking.py         # Safe chunking logic
-├── requirements.txt
-├── .env
+├── app.py              # Main CLI entry point (Command Router)
+├── ingest.py           # Document processing & embedding pipeline
+├── rag_agent.py        # Agentic RAG logic & grounding protocols
+├── vectordb.py         # Custom NumPy Vector Store implementation
+├── loaders.py          # PDF/DOCX/TXT extraction logic
+├── chunking.py         # Semantic text splitting logic
+├── requirements.txt    # Project dependencies
+├── .env                # API Keys (Gitignored)
 └── data/
-├── raw/            # Input documents
-└── vdb/            # Persistent vector index
+    ├── raw/            # Input folder for your documents
+    └── vdb/            # Local vector index (npy + jsonl)
 
-````
+```
 
 ---
 
-## Installation
+## ⚙️ Installation & Setup
 
-### 1. Create and activate virtual environment
+1. **Clone & Environment**
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
-````
-
-### 2. Install dependencies
-
-```bash
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+
 ```
 
-### 3. Set Gemini API key
 
-Create a `.env` file:
-
+2. **Configure API Key**
+Create a `.env` file in the root directory:
 ```env
-GOOGLE_API_KEY=your_api_key_here
+GOOGLE_API_KEY=your_gemini_api_key_here
+
 ```
+
+
 
 ---
 
-## Usage (CLI Only)
+## 💻 Usage (CLI)
 
-### Step 1: Add documents
+### 1. Ingest Documents
 
-Place documents into:
-
-```
-data/raw/
-```
-
-Supported formats:
-
-* `.pdf`
-* `.docx`
-* `.txt`
-* `.md`
-
----
-
-### Step 2: Build the index
+Place your source files in `data/raw/` and run the ingestion script:
 
 ```bash
 python app.py ingest
-```
-
-This performs:
-
-* Text extraction
-* Chunking
-* Embedding generation
-* Persistent storage in `data/vdb/`
-
-✔️ **Execution proof:**
-Ingestion completes successfully and creates:
 
 ```
-docs_meta.jsonl
-docs_emb.npy
-```
 
-(See Screenshot 1)
+*This triggers the extraction, chunking, and creation of `docs_emb.npy` and `docs_meta.jsonl`.*
 
----
+### 2. Query the Agent
 
-### Step 3: Query the system
+Start the interactive chat session:
 
 ```bash
 python app.py chat
-```
-
-Example:
 
 ```
-Ask> who is Red-eyed devil phrase referred to
-```
 
-Output:
+**Example Interaction:**
 
-```
-The phrase "red-eyed devil" refers to Buck.
-[The_Call_of_the_Wild-Jack_London.pdf, page 8]
-```
-
-✔️ **Execution proof:**
-Answer is document-grounded and correctly cited.
-(See Screenshot 2)
+> **Ask:** Who is "Red-eyed devil" referred to?
+> **Output:** The phrase "red-eyed devil" refers to Buck.
+> `[The_Call_of_the_Wild-Jack_London.pdf, page 8]`
 
 ---
 
-## Agentic RAG Behavior
+## 🛡️ Agentic Behavior: Hallucination Mitigation
 
-The system enforces **strict document grounding**.
+Unlike standard RAG systems that might "guess" an answer, this system enforces **Strict Grounding**.
 
-If the answer is not found:
+**Example of Safe Refusal:**
 
-1. States that the documents do not mention it
-2. Explains what information is missing
-3. Asks one clarifying question
-
-This mirrors enterprise RAG systems and prevents hallucinations.
+> "The indexed documents do not mention this phrase. To answer this, a document explaining the term is required. Could you add a relevant source?"
 
 ---
 
-## Example of Safe Refusal
+## 📊 Execution Evidence
 
-```
-The indexed documents do not mention this phrase.
-
-To answer this question, a document that explains the term or its context is required.
-Could you specify the source or add a relevant document?
-```
+* **Screenshot 1:** Successful ingestion showing vector creation in the terminal.
+* **Screenshot 2:** Verified CLI output showing a document-grounded answer with citations.
 
 ---
 
-## Rate Limiting & Reliability
+## 📝 Author
 
-* Embedding requests are throttled to respect Gemini free-tier quotas
-* Ingestion writes embeddings incrementally to avoid data loss
-* Clear error messages are shown for quota exhaustion
+Developed as a technical implementation of Agentic RAG systems to demonstrate local persistence and semantic retrieval architectures.
 
 ---
-
-## Limitations
-
-* Answers are restricted to uploaded documents
-* Free-tier Gemini API has rate limits
-* Scanned PDFs without extractable text are not supported
-
----
-
-## Conclusion
-
-This project demonstrates a **production-style Agentic RAG pipeline** using:
-
-* Local persistent vector indexing
-* Semantic retrieval
-* Document-grounded generation
-* Explicit citations
-
-It successfully replicates **NotebookLM-like behavior** using a custom implementation.
-
----
-
-## Execution Evidence
-
-* Screenshot 1: Successful ingestion and vector creation
-* Screenshot 2: Correct document-grounded answer with citation
-
----
-
-## Author
-
-Developed as part of an AI/ML assignment to understand and implement Agentic RAG systems.
-
-```
-
----
-
-### ✅ What this README now does correctly
-- ❌ **No UI mentioned**
-- ✅ Matches **exact CLI workflow**
-- ✅ Uses **your screenshots as evidence**
-- ✅ Sounds **professional and evaluable**
-- ✅ Clearly states **NotebookLM-like behavior without using NotebookLM**
-
-If you want, next I can:
-- shorten this to a **1–2 page submission**
-- add **“How this differs from basic RAG”**
-- write a **problem statement + learning outcomes**
-- help you prepare **viva / interview explanation**
-
-Just tell me 👍
-```
